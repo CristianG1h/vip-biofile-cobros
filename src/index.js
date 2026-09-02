@@ -6,6 +6,12 @@ import { runWeeklyDry } from "./jobs/weekly-dry.js";
 import { runFakeTest } from "./jobs/fake.js";
 import { runProjectDry } from "./jobs/project-dry.js";
 import { runBackfill } from "./jobs/backfill.js";
+import {
+  previsualizarCobro,
+  signatureForPlan,
+  enviarCobroConfirmado,
+  normalizeDesde,
+} from "./jobs/cobro.js";
 import { weekdayInZone } from "./utils/date.js";
 
 function argument(name) {
@@ -62,6 +68,55 @@ async function main() {
     return;
   }
 
+  if (mode === "previsualizar-cobro" || mode === "consultar-cartera") {
+    const desde = normalizeDesde(argument("desde") || "2026-01-01");
+    await withBiofile(async (page) => {
+      const preview = await previsualizarCobro(page, { desdeISO: desde });
+      console.log(JSON.stringify(preview.plan, null, 2));
+    });
+    return;
+  }
+
+  if (mode === "iniciar-cobro") {
+    const desde = normalizeDesde(argument("desde") || "2026-01-01");
+    const real = String(argument("modo") || "").toLowerCase() === "real";
+    if (!real) {
+      throw new Error('El comando iniciar-cobro exige --modo=real.');
+    }
+
+    const { createInterface } = await import("node:readline/promises");
+    const { stdin, stdout } = await import("node:process");
+
+    await withBiofile(async (page) => {
+      const preview = await previsualizarCobro(page, { desdeISO: desde });
+      console.log("\nENVÍO REAL");
+      console.log(JSON.stringify(preview.plan.summary, null, 2));
+      console.log("\nESTÁ A PUNTO DE INICIAR EL ENVÍO REAL.");
+
+      const rl = createInterface({ input: stdin, output: stdout });
+      const answer = await rl.question('Escribe CONFIRMAR para continuar: ');
+      rl.close();
+
+      if (String(answer).trim().toUpperCase() !== "CONFIRMAR") {
+        console.log("ENVÍO CANCELADO.");
+        return;
+      }
+
+      const revalidated = await previsualizarCobro(page, { desdeISO: desde });
+      if (signatureForPlan(revalidated.plan) !== signatureForPlan(preview.plan)) {
+        throw new Error(
+          "La cartera cambió desde la previsualización. No se envió nada; vuelve a ejecutar el comando."
+        );
+      }
+
+      const sent = await enviarCobroConfirmado(revalidated, {
+        source: "cli_real",
+      });
+      console.log(JSON.stringify(sent, null, 2));
+    });
+    return;
+  }
+
   if (mode === "daily") {
     await withBiofile((page) => runDaily(page));
     return;
@@ -73,7 +128,7 @@ async function main() {
   }
 
   if (mode !== "auto") {
-    throw new Error(`Modo desconocido: ${mode}. Use auto, daily, weekly, backfill, dry-backfill, fake, dry-biofile, dry-weekly, dry-project o dry-project-demo.`);
+    throw new Error(`Modo desconocido: ${mode}. Use auto, daily, weekly, backfill, dry-backfill, consultar-cartera, previsualizar-cobro, iniciar-cobro, fake, dry-biofile, dry-weekly, dry-project o dry-project-demo.`);
   }
 
   await withBiofile(async (page) => {
