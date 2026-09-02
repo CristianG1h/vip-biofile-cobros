@@ -249,8 +249,10 @@ function planificarCobrosDesdeBiofile_(invoices, meta) {
     g.saldoTotalEmpresa += f.saldo;
     g.facturas.push(f);
 
+    // Mostrar siempre los correos encontrados en el preview, aunque hoy no toque enviar.
+    g.correo = unionCorreos_([g.correo, f.correo]);
+
     if (f.accion === "SE_ENVIARIA_CORREO") {
-      g.correo = unionCorreos_([g.correo, f.correo]);
       g.saldo += f.saldo;
       g.nivel = g.nivel === null ? f.nivel : Math.max(g.nivel, f.nivel);
       g.accion = "SE_ENVIARIA_CORREO";
@@ -298,6 +300,13 @@ function planificarCobrosDesdeBiofile_(invoices, meta) {
   };
 }
 
+function textoEstadoVencimiento_(diasMora) {
+  var dias = Number(diasMora || 0);
+  if (dias < 0) return "Vence en " + Math.abs(dias) + " días";
+  if (dias === 0) return "Vence hoy";
+  return "Mora: " + dias + " días";
+}
+
 function cuerpoGrupoCobro_(group) {
   var facturas = [];
   var nivelMaximo = group.nivel || 1;
@@ -309,7 +318,7 @@ function cuerpoGrupoCobro_(group) {
       "- " + f.nFactura +
       " | Saldo: $" + Number(f.saldo).toLocaleString("es-CO") +
       " | Vencimiento: " + f.fechaVencimiento +
-      " | Días de mora: " + f.diasMora
+      " | " + textoEstadoVencimiento_(f.diasMora)
     );
   }
 
