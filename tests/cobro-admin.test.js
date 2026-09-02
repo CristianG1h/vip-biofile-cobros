@@ -107,3 +107,10 @@ test("el envío real requiere segunda confirmación", () => {
   assert.ok(source.includes("confirmationId"));
   assert.ok(source.includes("La cartera cambió desde la previsualización"));
 });
+
+
+test("la raíz y /health aceptan HEAD para UptimeRobot", () => {
+  const source = fs.readFileSync(path.join(root, "src", "server.js"), "utf8");
+  assert.ok(source.includes('req.method === "HEAD"') && source.includes('url.pathname === "/"'));
+  assert.ok(source.includes('url.pathname === "/health"'));
+});
