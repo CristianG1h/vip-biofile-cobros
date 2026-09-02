@@ -71,3 +71,28 @@ Invoke-RestMethod -Method Post -Uri "https://vip-biofile-cobros.onrender.com/api
 ```
 
 La respuesta será `202 Accepted` y el trabajo continuará dentro del Web Service. Revisa los logs de Render o consulta `/api/status`.
+
+
+## Consola administrativa
+
+Después del despliegue abre:
+
+```text
+https://TU-SERVICIO.onrender.com/admin/console
+```
+
+Inicia sesión con el valor de `SERVICE_API_KEY`.
+
+La consola no expone shell ni terminal Linux. Solo permite comandos controlados del sistema de cobros.
+
+Para la primera activación:
+
+1. `consultar-cartera --desde=2026-01-01`
+2. `previsualizar-cobro --desde=2026-01-01`
+3. Revisar destinatarios, niveles y saldos.
+4. Activar PRODUCCIÓN manualmente en Apps Script.
+5. `iniciar-cobro --desde=2026-01-01 --modo=real`
+6. Revisar el resumen.
+7. Pulsar `CONFIRMAR ENVÍO`.
+
+El envío real vuelve a consultar Biofile con `Estado = CON DEUDA`. Si la cartera cambió entre preview y confirmación, cancela el envío y exige una nueva previsualización.
