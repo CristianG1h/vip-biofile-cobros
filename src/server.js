@@ -19,7 +19,7 @@ import {
 import { todayISO, weekdayInZone } from "./utils/date.js";
 import { renderAdminLogin, renderAdminConsole } from "./admin-console.js";
 
-const VERSION = "4.3.0-admin";
+const VERSION = "4.3.1-admin";
 const ADMIN_COOKIE = "vip_cobros_admin";
 const ADMIN_SESSION_HOURS = 8;
 const confirmations = new Map();
