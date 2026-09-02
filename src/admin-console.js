@@ -42,7 +42,7 @@ export function renderAdminLogin({ error = "" } = {}) {
 }
 
 export function renderAdminConsole() {
-  return `<!doctype html>
+  return String.raw`<!doctype html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
