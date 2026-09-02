@@ -123,3 +123,48 @@ test("la consola renderizada contiene JavaScript válido", () => {
   assert.ok(match, "Debe existir script embebido");
   assert.doesNotThrow(() => new Function(match[1]));
 });
+
+
+test("los niveles se mantienen durante todo el rango", () => {
+  const source = fs.readFileSync(path.join(root, "apps-script", "CobrosVIP.gs"), "utf8");
+  const start = source.indexOf("function calcularNivel(");
+  const end = source.indexOf("\nfunction ", start + 10);
+  assert.ok(start >= 0 && end > start);
+  const calcularNivel = new Function(source.slice(start, end) + "; return calcularNivel;")();
+
+  // Categoría B: regla solicitada por el usuario.
+  assert.equal(calcularNivel("B", -8), null);
+  assert.equal(calcularNivel("B", -5), 1);
+  assert.equal(calcularNivel("B", -1), 1);
+  assert.equal(calcularNivel("B", 0), 2);
+  assert.equal(calcularNivel("B", 8), 2);
+  assert.equal(calcularNivel("B", 9), 3);
+  assert.equal(calcularNivel("B", 17), 3);
+  assert.equal(calcularNivel("B", 18), 4);
+  assert.equal(calcularNivel("B", 24), 4);
+  assert.equal(calcularNivel("B", 27), 4);
+  assert.equal(calcularNivel("B", 28), 5);
+  assert.equal(calcularNivel("B", 36), 5);
+  assert.equal(calcularNivel("B", 55), 8);
+
+  // A y C también permanecen por rangos.
+  assert.equal(calcularNivel("A", 10), 1);
+  assert.equal(calcularNivel("A", 18), 1);
+  assert.equal(calcularNivel("A", 19), 2);
+  assert.equal(calcularNivel("C", 0), 3);
+  assert.equal(calcularNivel("C", 8), 3);
+  assert.equal(calcularNivel("C", 9), 4);
+});
+
+test("el preview conserva el correo aunque hoy no corresponda envío", () => {
+  const source = fs.readFileSync(path.join(root, "apps-script", "CobrosAdmin.gs"), "utf8");
+  const groupIndex = source.indexOf("g.correo = unionCorreos_([g.correo, f.correo]);");
+  const sendIndex = source.indexOf('if (f.accion === "SE_ENVIARIA_CORREO")', groupIndex);
+  assert.ok(groupIndex >= 0);
+  assert.ok(sendIndex > groupIndex, "El correo debe agregarse antes de decidir si hoy se envía");
+});
+
+test("la consola muestra vencimiento futuro sin mora negativa", () => {
+  const html = renderAdminConsole();
+  assert.ok(html.includes('if(n<0) return "vence en "+Math.abs(n)+" días"'));
+});
