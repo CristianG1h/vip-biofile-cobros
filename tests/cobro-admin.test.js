@@ -130,7 +130,11 @@ test("los niveles se mantienen durante todo el rango", () => {
   const start = source.indexOf("function calcularNivel(");
   const end = source.indexOf("\nfunction ", start + 10);
   assert.ok(start >= 0 && end > start);
-  const calcularNivel = new Function(source.slice(start, end) + "; return calcularNivel;")();
+  const calcularNivel = new Function(
+    'function normalizarTexto_(v){return String(v||"").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toUpperCase().trim();}' +
+    source.slice(start, end) +
+    "; return calcularNivel;"
+  )();
 
   // Categoría B: regla solicitada por el usuario.
   assert.equal(calcularNivel("B", -8), null);
