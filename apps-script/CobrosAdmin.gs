@@ -1,6 +1,6 @@
 // ============================================================================
 // VIP COBROS - MOTOR CENTRAL DE COBRO / CONSOLA ADMIN
-// Version 4.3.1
+// Version 4.4.0
 // ============================================================================
 // Este archivo reutiliza las reglas existentes definidas en CobrosVIP.gs:
 // - calcularNivel()
@@ -114,6 +114,70 @@ function calcularPlazoParaCobro_(nit, fechaFactura, existingRow, condiciones, co
 
 function unionCorreos_(values) {
   return normalizarDestinatarios_((values || []).join(","));
+}
+
+function obtenerReservaCuotaCobros_() {
+  var props = PropertiesService.getScriptProperties();
+  var raw = props.getProperty("COBRO_RESERVA_CUOTA");
+  var value = Number(raw === null || raw === "" ? 10 : raw);
+  if (!isFinite(value) || value < 0) value = 10;
+  return Math.floor(value);
+}
+
+function obtenerEstadoCuotaCobros_() {
+  var restante = Number(MailApp.getRemainingDailyQuota());
+  if (!isFinite(restante) || restante < 0) restante = 0;
+
+  var reserva = obtenerReservaCuotaCobros_();
+  return {
+    restante: restante,
+    reserva: reserva,
+    operativa: Math.max(0, restante - reserva)
+  };
+}
+
+function obtenerInfoDestinatariosGrupo_(group) {
+  var to = normalizarDestinatarios_(group && group.correo ? group.correo : "");
+  var necesitaCC = false;
+
+  var facturas = group && group.facturas ? group.facturas : [];
+  for (var i = 0; i < facturas.length; i++) {
+    var f = facturas[i];
+    if (f.accion !== "SE_ENVIARIA_CORREO") continue;
+    if (
+      normalizarTexto_(f.categoria) === "C" &&
+      Number(f.diasMora || 0) >= 15
+    ) {
+      necesitaCC = true;
+      break;
+    }
+  }
+
+  var cc = "";
+  if (necesitaCC) {
+    var correoContabilidad = normalizarDestinatarios_(CORREO_CONTABILIDAD);
+    var listaTo = extraerCorreos_(to);
+    var listaCc = extraerCorreos_(correoContabilidad);
+    var existe = {};
+
+    for (var j = 0; j < listaTo.length; j++) existe[listaTo[j]] = true;
+
+    var ccFinal = [];
+    for (var k = 0; k < listaCc.length; k++) {
+      if (!existe[listaCc[k]]) {
+        existe[listaCc[k]] = true;
+        ccFinal.push(listaCc[k]);
+      }
+    }
+    cc = ccFinal.join(",");
+  }
+
+  var todos = extraerCorreos_([to, cc].join(","));
+  return {
+    to: to,
+    cc: cc,
+    cantidad: todos.length
+  };
 }
 
 function prepararFacturaCobro_(raw, hoy, directorio, condiciones, contexto, historial) {
@@ -240,6 +304,9 @@ function planificarCobrosDesdeBiofile_(invoices, meta) {
         saldo: 0,
         saldoTotalEmpresa: 0,
         nivel: null,
+        maxDiasMora: null,
+        destinatariosCuota: 0,
+        estadoCuota: "NO_APLICA",
         accion: "SIN_ENVIO",
         facturas: []
       };
@@ -255,6 +322,9 @@ function planificarCobrosDesdeBiofile_(invoices, meta) {
     if (f.accion === "SE_ENVIARIA_CORREO") {
       g.saldo += f.saldo;
       g.nivel = g.nivel === null ? f.nivel : Math.max(g.nivel, f.nivel);
+      g.maxDiasMora = g.maxDiasMora === null
+        ? Number(f.diasMora || 0)
+        : Math.max(g.maxDiasMora, Number(f.diasMora || 0));
       g.accion = "SE_ENVIARIA_CORREO";
     }
   }
@@ -262,6 +332,18 @@ function planificarCobrosDesdeBiofile_(invoices, meta) {
   var groups = Object.keys(grouped)
     .map(function(k) { return grouped[k]; })
     .sort(function(a, b) {
+      var aEnvio = a.accion === "SE_ENVIARIA_CORREO" ? 1 : 0;
+      var bEnvio = b.accion === "SE_ENVIARIA_CORREO" ? 1 : 0;
+      if (aEnvio !== bEnvio) return bEnvio - aEnvio;
+
+      var nivelA = Number(a.nivel || 0);
+      var nivelB = Number(b.nivel || 0);
+      if (nivelA !== nivelB) return nivelB - nivelA;
+
+      var moraA = Number(a.maxDiasMora || 0);
+      var moraB = Number(b.maxDiasMora || 0);
+      if (moraA !== moraB) return moraB - moraA;
+
       return normalizarCliente_(a.cliente).localeCompare(normalizarCliente_(b.cliente));
     });
 
@@ -269,17 +351,51 @@ function planificarCobrosDesdeBiofile_(invoices, meta) {
   var saldoAEnviar = 0;
   var facturasConEnvio = 0;
   var empresasConEnvio = 0;
+  var destinatariosPlaneados = 0;
 
   for (var x = 0; x < groups.length; x++) {
     saldoTotal += groups[x].saldoTotalEmpresa;
     if (groups[x].accion === "SE_ENVIARIA_CORREO") {
       empresasConEnvio++;
       saldoAEnviar += groups[x].saldo;
+
+      var infoDest = obtenerInfoDestinatariosGrupo_(groups[x]);
+      groups[x].destinatariosCuota = infoDest.cantidad;
+      destinatariosPlaneados += infoDest.cantidad;
+
       for (var y = 0; y < groups[x].facturas.length; y++) {
         if (groups[x].facturas[y].accion === "SE_ENVIARIA_CORREO") {
           facturasConEnvio++;
         }
       }
+    }
+  }
+
+  var cuota = obtenerEstadoCuotaCobros_();
+  var cupoPreview = cuota.operativa;
+  var empresasQueCabenHoy = 0;
+  var destinatariosQueCabenHoy = 0;
+  var empresasPendientesPorCuota = 0;
+  var bloqueadoPorPrioridad = false;
+
+  for (var q = 0; q < groups.length; q++) {
+    var grupoCuota = groups[q];
+    if (grupoCuota.accion !== "SE_ENVIARIA_CORREO") continue;
+
+    var costo = Number(grupoCuota.destinatariosCuota || 0);
+    if (
+      !bloqueadoPorPrioridad &&
+      costo > 0 &&
+      costo <= cupoPreview
+    ) {
+      grupoCuota.estadoCuota = "CABRIA_HOY";
+      cupoPreview -= costo;
+      empresasQueCabenHoy++;
+      destinatariosQueCabenHoy += costo;
+    } else {
+      grupoCuota.estadoCuota = "PENDIENTE_POR_CUOTA";
+      empresasPendientesPorCuota++;
+      bloqueadoPorPrioridad = true;
     }
   }
 
@@ -294,7 +410,14 @@ function planificarCobrosDesdeBiofile_(invoices, meta) {
       saldoTotal: saldoTotal,
       empresasConEnvio: empresasConEnvio,
       facturasConEnvio: facturasConEnvio,
-      saldoAEnviar: saldoAEnviar
+      saldoAEnviar: saldoAEnviar,
+      cuotaRestanteGmail: cuota.restante,
+      reservaCuota: cuota.reserva,
+      cuotaOperativa: cuota.operativa,
+      destinatariosPlaneados: destinatariosPlaneados,
+      empresasQueCabenHoy: empresasQueCabenHoy,
+      destinatariosQueCabenHoy: destinatariosQueCabenHoy,
+      empresasPendientesPorCuota: empresasPendientesPorCuota
     },
     groups: groups
   };
@@ -380,6 +503,11 @@ function enviarCobrosDesdeBiofile_(invoices, meta) {
     var enviadosFacturas = 0;
     var omitidos = 0;
     var errores = 0;
+    var destinatariosConsumidos = 0;
+    var empresasPendientesPorCuota = 0;
+    var finalizadoPorCuota = false;
+    var cuotaInicial = obtenerEstadoCuotaCobros_();
+    var reservaCuota = cuotaInicial.reserva;
 
     for (var i = 0; i < plan.groups.length; i++) {
       var group = plan.groups[i];
@@ -390,21 +518,57 @@ function enviarCobrosDesdeBiofile_(invoices, meta) {
 
       var facturasEnvio = [];
       var maxDias = 0;
-      var necesitaCC = false;
 
       for (var j = 0; j < group.facturas.length; j++) {
         var f = group.facturas[j];
         if (f.accion !== "SE_ENVIARIA_CORREO") continue;
         facturasEnvio.push(f);
         maxDias = Math.max(maxDias, Number(f.diasMora || 0));
-        if (normalizarTexto_(f.categoria) === "C" && Number(f.diasMora || 0) >= 15) {
-          necesitaCC = true;
-        }
       }
 
       if (!facturasEnvio.length) {
         omitidos++;
         continue;
+      }
+
+      var infoDestinatarios = obtenerInfoDestinatariosGrupo_(group);
+      var cuotaAhora = obtenerEstadoCuotaCobros_();
+
+      if (
+        infoDestinatarios.cantidad <= 0 ||
+        infoDestinatarios.cantidad > cuotaAhora.operativa
+      ) {
+        finalizadoPorCuota = true;
+
+        // Mantener prioridad estricta: no saltamos a empresas de menor nivel
+        // solo para aprovechar uno o dos destinatarios sobrantes.
+        for (var p = i; p < plan.groups.length; p++) {
+          var pendiente = plan.groups[p];
+          if (pendiente.accion !== "SE_ENVIARIA_CORREO") continue;
+
+          empresasPendientesPorCuota++;
+          var infoPendiente = obtenerInfoDestinatariosGrupo_(pendiente);
+
+          registrarLogCobroAdmin_({
+            processId: processId,
+            empresa: pendiente.cliente,
+            facturas: (pendiente.facturas || [])
+              .filter(function(item) { return item.accion === "SE_ENVIARIA_CORREO"; })
+              .map(function(item) { return item.nFactura; })
+              .join(", "),
+            saldo: pendiente.saldo,
+            diasMora: pendiente.maxDiasMora,
+            nivel: pendiente.nivel,
+            destinatario: pendiente.correo,
+            resultado: "PENDIENTE_POR_CUOTA",
+            detalle:
+              "Necesita " + infoPendiente.cantidad +
+              " destinatarios. Cuota restante=" + cuotaAhora.restante +
+              ", reserva=" + reservaCuota +
+              ", operativa=" + cuotaAhora.operativa
+          });
+        }
+        break;
       }
 
       try {
@@ -414,14 +578,16 @@ function enviarCobrosDesdeBiofile_(invoices, meta) {
           (facturasEnvio.length === 1 ? " factura" : " facturas");
 
         var opciones = { name: "VIP Salud Ocupacional - Cartera" };
-        if (necesitaCC) opciones.cc = CORREO_CONTABILIDAD;
+        if (infoDestinatarios.cc) opciones.cc = infoDestinatarios.cc;
 
-        GmailApp.sendEmail(
-          group.correo,
+        MailApp.sendEmail(
+          infoDestinatarios.to,
           asunto,
           cuerpoGrupoCobro_(group),
           opciones
         );
+
+        destinatariosConsumidos += infoDestinatarios.cantidad;
 
         // Registro inmediato por factura. Solo después de sendEmail exitoso.
         for (var k = 0; k < facturasEnvio.length; k++) {
@@ -451,13 +617,17 @@ function enviarCobrosDesdeBiofile_(invoices, meta) {
 
           if (item.diasMora >= 100) {
             try {
-              avisarCarteraCritica_(
-                item.cliente,
-                item.nFactura,
-                item.saldo,
-                item.diasMora,
-                item.categoria
-              );
+              // La reserva existe precisamente para alertas internas y otros usos.
+              // Si ya no queda cuota, la alerta se omite sin afectar el envío al cliente.
+              if (MailApp.getRemainingDailyQuota() > 0) {
+                avisarCarteraCritica_(
+                  item.cliente,
+                  item.nFactura,
+                  item.saldo,
+                  item.diasMora,
+                  item.categoria
+                );
+              }
             } catch (ignoreAlert) {}
           }
         }
@@ -498,7 +668,13 @@ function enviarCobrosDesdeBiofile_(invoices, meta) {
       enviadosEmpresas: enviadosEmpresas,
       enviadosFacturas: enviadosFacturas,
       omitidos: omitidos,
-      errores: errores
+      errores: errores,
+      destinatariosConsumidos: destinatariosConsumidos,
+      cuotaInicial: cuotaInicial.restante,
+      reservaCuota: reservaCuota,
+      cuotaRestante: Number(MailApp.getRemainingDailyQuota()),
+      empresasPendientesPorCuota: empresasPendientesPorCuota,
+      finalizadoPorCuota: finalizadoPorCuota
     };
   } finally {
     liberarLockCobro_(processId);
