@@ -175,6 +175,13 @@ function prettyPlan(data){
   out+="Empresas con envío hoy: "+(s.empresasConEnvio??0)+"\n";
   out+="Facturas con envío hoy: "+(s.facturasConEnvio??0)+"\n";
   out+="Saldo incluido en envío: "+money(s.saldoAEnviar)+"\n";
+  out+="Cuota Gmail restante: "+(s.cuotaRestanteGmail??"-")+" destinatarios\n";
+  out+="Reserva de seguridad: "+(s.reservaCuota??"-")+"\n";
+  out+="Disponible para cartera hoy: "+(s.cuotaOperativa??"-")+" destinatarios\n";
+  out+="Destinatarios planeados: "+(s.destinatariosPlaneados??"-")+"\n";
+  out+="Empresas que caben hoy: "+(s.empresasQueCabenHoy??"-")+"\n";
+  out+="Destinatarios que caben hoy: "+(s.destinatariosQueCabenHoy??"-")+"\n";
+  out+="Empresas pendientes por cuota: "+(s.empresasPendientesPorCuota??"-")+"\n";
   const groups=data.plan?.groups||[];
   for(const g of groups){
     out+="\n-----------------------------------------\n"+g.cliente+"\n";
@@ -182,6 +189,10 @@ function prettyPlan(data){
     out+="Nivel correspondiente: "+(g.nivel===null?"NO TOCA HOY":"NIVEL "+g.nivel)+"\n";
     out+="Destinatario: "+(g.correo||"NO ENCONTRADO")+"\n";
     out+="Acción: "+g.accion+"\n";
+    if(g.accion==="SE_ENVIARIA_CORREO"){
+      out+="Consumo cuota: "+(g.destinatariosCuota??0)+" destinatarios\n";
+      out+="Estado cuota: "+(g.estadoCuota||"NO_CALCULADO")+"\n";
+    }
     for(const f of (g.facturas||[])){
       out+="  "+f.nFactura+" | "+money(f.saldo)+" | "+estadoVencimiento(f.diasMora)+" | "+(f.nivel===null?"sin nivel":"nivel "+f.nivel)+" | "+f.accion+"\n";
     }
@@ -200,9 +211,13 @@ async function runCommand(command){
       document.getElementById("confirmSummary").textContent=
         "Periodo: "+d.plan.summary.desde+" - "+d.plan.summary.hasta+"\n"+
         "Filtro: CON DEUDA\n"+
-        d.plan.summary.empresasConEnvio+" empresas\n"+
+        d.plan.summary.empresasConEnvio+" empresas candidatas\n"+
         d.plan.summary.facturasConEnvio+" facturas\n"+
-        money(d.plan.summary.saldoAEnviar)+" de cartera incluida\n\nESTÁ A PUNTO DE INICIAR EL ENVÍO REAL";
+        money(d.plan.summary.saldoAEnviar)+" de cartera incluida\n"+
+        "Cuota restante: "+d.plan.summary.cuotaRestanteGmail+" destinatarios\n"+
+        "Reserva: "+d.plan.summary.reservaCuota+"\n"+
+        "Caben hoy: "+d.plan.summary.empresasQueCabenHoy+" empresas / "+d.plan.summary.destinatariosQueCabenHoy+" destinatarios\n"+
+        "Pendientes por cuota: "+d.plan.summary.empresasPendientesPorCuota+" empresas\n\nESTÁ A PUNTO DE INICIAR EL ENVÍO REAL";
       document.getElementById("confirm").style.display="block";
     } else append(JSON.stringify(d,null,2));
   }catch(e){append("ERROR: "+e.message,"err");}
