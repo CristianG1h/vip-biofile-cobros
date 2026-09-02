@@ -39,6 +39,10 @@ export function syncWeeklyToAppsScript(invoices, meta = {}) {
   return callAppsScript("sync_weekly", { invoices, meta });
 }
 
+export function syncBackfillToAppsScript(invoices, meta = {}) {
+  return callAppsScript("sync_backfill", { invoices, meta });
+}
+
 export function importDirectoryToAppsScript(rows, meta = {}) {
   return callAppsScript("import_directory", { rows, meta });
 }
