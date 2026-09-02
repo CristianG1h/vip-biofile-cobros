@@ -123,6 +123,12 @@ function append(text, cls=""){
   line.textContent=String(text); terminal.appendChild(line); terminal.scrollTop=terminal.scrollHeight;
 }
 function money(v){ return new Intl.NumberFormat("es-CO",{style:"currency",currency:"COP",maximumFractionDigits:0}).format(Number(v||0)); }
+function estadoVencimiento(dias){
+  const n=Number(dias||0);
+  if(n<0) return "vence en "+Math.abs(n)+" días";
+  if(n===0) return "vence hoy";
+  return "mora "+n+" días";
+}
 
 async function api(path, options={}){
   const r=await fetch(path,{credentials:"same-origin",headers:{"content-type":"application/json",...(options.headers||{})},...options});
@@ -177,7 +183,7 @@ function prettyPlan(data){
     out+="Destinatario: "+(g.correo||"NO ENCONTRADO")+"\n";
     out+="Acción: "+g.accion+"\n";
     for(const f of (g.facturas||[])){
-      out+="  "+f.nFactura+" | "+money(f.saldo)+" | mora "+f.diasMora+" días | "+(f.nivel===null?"sin nivel":"nivel "+f.nivel)+" | "+f.accion+"\n";
+      out+="  "+f.nFactura+" | "+money(f.saldo)+" | "+estadoVencimiento(f.diasMora)+" | "+(f.nivel===null?"sin nivel":"nivel "+f.nivel)+" | "+f.accion+"\n";
     }
   }
   return out;
