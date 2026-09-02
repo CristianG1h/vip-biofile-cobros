@@ -200,3 +200,43 @@ test("la cuota cuenta destinatarios únicos incluyendo CC", () => {
   assert.ok(source.includes("var todos = extraerCorreos_([to, cc].join"));
   assert.ok(source.includes("cantidad: todos.length"));
 });
+
+
+test("la firma ignora cambios de cuota pero detecta cambios reales de cartera", () => {
+  const base = {
+    summary: {
+      filtroBiofile: "CON DEUDA",
+      desde: "2026-01-01",
+      hasta: "2026-09-02",
+      cuotaRestanteGmail: 100,
+      reservaCuota: 10,
+      cuotaOperativa: 90,
+      destinatariosPlaneados: 120
+    },
+    groups: [{
+      key: "900123456",
+      cliente: "EMPRESA SAS",
+      correo: "facturacion@empresa.com",
+      accion: "SE_ENVIARIA_CORREO",
+      nivel: 5,
+      saldo: 500000,
+      facturas: [{
+        nFactura: "FE-1000",
+        saldo: 500000,
+        diasMora: 30,
+        nivel: 5,
+        accion: "SE_ENVIARIA_CORREO"
+      }]
+    }]
+  };
+
+  const cuotaCambio = structuredClone(base);
+  cuotaCambio.summary.cuotaRestanteGmail = 87;
+  cuotaCambio.summary.cuotaOperativa = 77;
+
+  const saldoCambio = structuredClone(base);
+  saldoCambio.groups[0].facturas[0].saldo = 400000;
+
+  assert.equal(signatureForPlan(base), signatureForPlan(cuotaCambio));
+  assert.notEqual(signatureForPlan(base), signatureForPlan(saldoCambio));
+});
