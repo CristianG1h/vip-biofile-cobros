@@ -7,6 +7,21 @@ function secretKey(key) {
   );
 }
 
+function redactSecretsInText(value) {
+  let text = String(value ?? "");
+  const secrets = [
+    process.env.BIOFILE_CONTRASENA,
+    process.env.BIOFILE_PASSWORD,
+    process.env.APPS_SCRIPT_TOKEN,
+    process.env.SERVICE_API_KEY,
+  ].filter((item) => String(item || "").length >= 4);
+
+  for (const secret of secrets) {
+    text = text.split(String(secret)).join("[REDACTED]");
+  }
+  return text;
+}
+
 function redact(value, depth = 0) {
   if (depth > 6) return "[MAX_DEPTH]";
   if (value === null || value === undefined) return value;
@@ -23,6 +38,7 @@ function redact(value, depth = 0) {
     return out;
   }
 
+  if (typeof value === "string") return redactSecretsInText(value);
   return value;
 }
 
@@ -35,8 +51,8 @@ function line(level, message, data) {
   const safeData = data === undefined ? undefined : redact(data);
   const at = new Date().toISOString();
   const extra = safeData === undefined ? "" : ` ${JSON.stringify(safeData)}`;
-  console.log(`[${at}] [${level}] ${message}${extra}`);
-  push({ at, level, message: String(message || ""), data: safeData });
+  console.log(`[${at}] [${level}] ${redactSecretsInText(message)}${extra}`);
+  push({ at, level, message: redactSecretsInText(message), data: safeData });
 }
 
 export const logger = {
