@@ -109,8 +109,16 @@ export async function ejecutarCobroReal(
 }
 
 export function signatureForPlan(plan) {
+  // La firma debe representar únicamente la cartera y la decisión de cobro.
+  // NO debe incluir datos dinámicos de cuota (remainingDailyQuota, reserva, etc.),
+  // porque esos pueden variar entre preview y confirmación sin que la cartera cambie.
+  const summary = plan?.summary || {};
   const stable = {
-    summary: plan?.summary || {},
+    range: {
+      filtroBiofile: summary.filtroBiofile || COBRO_ESTADO,
+      desde: summary.desde || "",
+      hasta: summary.hasta || "",
+    },
     groups: Array.isArray(plan?.groups)
       ? plan.groups.map((group) => ({
           key: group.key,
