@@ -72,6 +72,7 @@ function onOpen() {
     .addSeparator()
     .addItem("Prueba falsa segura", "probarAppsScriptConFacturaFalsa")
     .addItem("Ver modo actual", "mostrarModoActual")
+    .addItem("Ver cuota de correo", "mostrarCuotaCorreo")
     .addItem("Activar MODO PRUEBA", "activarModoPrueba")
     .addItem("Activar PRODUCCIÓN", "activarProduccion")
     .addSeparator()
@@ -85,6 +86,9 @@ function prepararSistemaCobrosVIP() {
   var props = PropertiesService.getScriptProperties();
   if (props.getProperty("MODO_PRUEBA") === null) {
     props.setProperty("MODO_PRUEBA", "true");
+  }
+  if (props.getProperty("COBRO_RESERVA_CUOTA") === null) {
+    props.setProperty("COBRO_RESERVA_CUOTA", "10");
   }
 
   SpreadsheetApp.getUi().alert(
@@ -872,6 +876,21 @@ function mostrarModoActual() {
     getModoPrueba_()
       ? "MODO PRUEBA ACTIVO: no se envían correos reales."
       : "MODO PRODUCCIÓN ACTIVO: sí se pueden enviar correos reales."
+  );
+}
+
+function mostrarCuotaCorreo() {
+  var restante = Number(MailApp.getRemainingDailyQuota());
+  var reserva = 10;
+  try {
+    var raw = PropertiesService.getScriptProperties().getProperty("COBRO_RESERVA_CUOTA");
+    if (raw !== null && raw !== "") reserva = Math.max(0, Math.floor(Number(raw)));
+  } catch (ignore) {}
+
+  SpreadsheetApp.getUi().alert(
+    "Cuota de correo disponible hoy: " + restante + " destinatarios.\n" +
+    "Reserva configurada: " + reserva + ".\n" +
+    "Disponible para cartera: " + Math.max(0, restante - reserva) + "."
   );
 }
 
