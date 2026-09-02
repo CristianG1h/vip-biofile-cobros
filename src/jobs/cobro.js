@@ -9,6 +9,8 @@ import {
   sendCobrosInAppsScript,
 } from "../apps-script-client.js";
 
+export const COBRO_ESTADO = COBRO_ESTADO;
+
 export function defaultCobroDesde() {
   return "2026-01-01";
 }
@@ -38,7 +40,7 @@ export async function consultarCarteraBiofile(page, { desdeISO = "", hastaISO = 
   logger.info("Iniciando consulta de cartera en Biofile.", {
     desde,
     hasta,
-    estado: "CON DEUDA",
+    estado: COBRO_ESTADO,
     pageSize: 1000,
   });
 
@@ -49,7 +51,7 @@ export async function consultarCarteraBiofile(page, { desdeISO = "", hastaISO = 
       hasta: isoToBiofile(range.endISO),
       daily: false,
       pageSize: 1000,
-      estado: "CON DEUDA",
+      estado: COBRO_ESTADO,
     });
 
     collected.push(...rows.filter((row) => Number(row.saldoPendiente || 0) > 0));
@@ -63,7 +65,7 @@ export async function consultarCarteraBiofile(page, { desdeISO = "", hastaISO = 
     facturasConSaldo: invoices.length,
     desde,
     hasta,
-    estado: "CON DEUDA",
+    estado: COBRO_ESTADO,
   });
 
   return { desde, hasta, invoices };
@@ -74,7 +76,7 @@ export async function previsualizarCobro(page, { desdeISO = "", hastaISO = "" } 
   const plan = await planCobrosInAppsScript(consulta.invoices, {
     desde: consulta.desde,
     hasta: consulta.hasta,
-    filtroBiofile: "CON DEUDA",
+    filtroBiofile: COBRO_ESTADO,
     source: "admin_console_preview",
   });
 
@@ -94,7 +96,7 @@ export async function ejecutarCobroReal(
   const result = await sendCobrosInAppsScript(consulta.invoices, {
     desde: consulta.desde,
     hasta: consulta.hasta,
-    filtroBiofile: "CON DEUDA",
+    filtroBiofile: COBRO_ESTADO,
     source: "admin_console_real",
     processId: id,
   });
@@ -144,7 +146,7 @@ export async function enviarCobroConfirmado(
   const result = await sendCobrosInAppsScript(consulta.invoices || [], {
     desde: consulta.desde,
     hasta: consulta.hasta,
-    filtroBiofile: "CON DEUDA",
+    filtroBiofile: COBRO_ESTADO,
     source,
     processId: id,
   });
