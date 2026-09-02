@@ -8,6 +8,7 @@ import {
   signatureForPlan,
 } from "../src/jobs/cobro.js";
 import { redactForLog } from "../src/logger.js";
+import { renderAdminConsole } from "../src/admin-console.js";
 import { todayISO } from "../src/utils/date.js";
 
 test("la automatización de cobro usa exclusivamente CON DEUDA", () => {
@@ -113,4 +114,12 @@ test("la raíz y /health aceptan HEAD para UptimeRobot", () => {
   const source = fs.readFileSync(path.join(root, "src", "server.js"), "utf8");
   assert.ok(source.includes('req.method === "HEAD"') && source.includes('url.pathname === "/"'));
   assert.ok(source.includes('url.pathname === "/health"'));
+});
+
+
+test("la consola renderizada contiene JavaScript válido", () => {
+  const html = renderAdminConsole();
+  const match = html.match(/<script>([\s\S]*?)<\/script>/);
+  assert.ok(match, "Debe existir script embebido");
+  assert.doesNotThrow(() => new Function(match[1]));
 });
