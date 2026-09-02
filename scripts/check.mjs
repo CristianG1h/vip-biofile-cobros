@@ -28,18 +28,22 @@ for (const file of files) {
   console.log(`OK sintaxis: ${path.relative(root, file)}`);
 }
 
-// Apps Script usa extensión .gs. Copiamos temporalmente a .js solo para validar sintaxis JS.
-const gsPath = path.join(root, "apps-script", "CobrosVIP.gs");
-if (fs.existsSync(gsPath)) {
-  const temp = path.join(os.tmpdir(), `CobrosVIP-${process.pid}.js`);
-  fs.copyFileSync(gsPath, temp);
-  const result = spawnSync(process.execPath, ["--check", temp], { encoding: "utf8" });
-  fs.unlinkSync(temp);
-  if (result.status !== 0) {
-    process.stderr.write(result.stderr || result.stdout);
-    process.exit(result.status || 1);
+// Apps Script usa extensión .gs. Validamos todos los archivos .gs como JavaScript.
+const appsScriptDir = path.join(root, "apps-script");
+if (fs.existsSync(appsScriptDir)) {
+  for (const entry of fs.readdirSync(appsScriptDir)) {
+    if (!entry.endsWith(".gs")) continue;
+    const gsPath = path.join(appsScriptDir, entry);
+    const temp = path.join(os.tmpdir(), `${entry}-${process.pid}.js`);
+    fs.copyFileSync(gsPath, temp);
+    const result = spawnSync(process.execPath, ["--check", temp], { encoding: "utf8" });
+    fs.unlinkSync(temp);
+    if (result.status !== 0) {
+      process.stderr.write(result.stderr || result.stdout);
+      process.exit(result.status || 1);
+    }
+    console.log(`OK sintaxis: apps-script/${entry}`);
   }
-  console.log("OK sintaxis: apps-script/CobrosVIP.gs");
 }
 
 const tests = spawnSync(process.execPath, ["--test", path.join(root, "tests", "*.test.js")], {
