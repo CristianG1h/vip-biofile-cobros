@@ -300,3 +300,33 @@ Nunca se envía recordatorio cuando:
 Además, el mismo nivel no se envía dos veces el mismo día.
 
 El sistema inicia en **MODO PRUEBA**. El modo producción se activa manualmente desde el menú `Cobros VIP` de Google Sheets.
+
+
+---
+
+## Consola administrativa 4.3
+
+La operación manual segura se realiza en `/admin/console` y está protegida por `SERVICE_API_KEY`.
+
+El flujo de cobro manual consulta Biofile con:
+
+- Fecha Desde configurable (por defecto `2026-01-01`).
+- Fecha Hasta calculada en `America/Bogota`.
+- Estado seleccionado exactamente como `CON DEUDA`.
+- 1000 registros y recorrido de todas las páginas.
+- Validación adicional `Vr. Saldo > 0`.
+
+Comandos permitidos:
+
+```text
+estado
+consultar-cartera --desde=2026-01-01
+previsualizar-cobro --desde=2026-01-01
+iniciar-cobro --desde=2026-01-01 --modo=real
+ver-historial
+ver-logs
+```
+
+No existe shell ni ejecución arbitraria de comandos.
+
+Consulta `ADMIN_CONSOLE.md` para el procedimiento completo de preview y primer envío real.
