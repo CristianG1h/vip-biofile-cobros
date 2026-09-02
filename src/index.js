@@ -5,6 +5,7 @@ import { runWeekly } from "./jobs/weekly.js";
 import { runWeeklyDry } from "./jobs/weekly-dry.js";
 import { runFakeTest } from "./jobs/fake.js";
 import { runProjectDry } from "./jobs/project-dry.js";
+import { runBackfill } from "./jobs/backfill.js";
 import { weekdayInZone } from "./utils/date.js";
 
 function argument(name) {
@@ -53,6 +54,14 @@ async function main() {
     return;
   }
 
+  if (mode === "backfill" || mode === "dry-backfill") {
+    const desde = argument("desde");
+    const hasta = argument("hasta");
+    const dryRun = mode === "dry-backfill";
+    await withBiofile((page) => runBackfill(page, { desdeISO: desde, hastaISO: hasta, dryRun }));
+    return;
+  }
+
   if (mode === "daily") {
     await withBiofile((page) => runDaily(page));
     return;
@@ -64,7 +73,7 @@ async function main() {
   }
 
   if (mode !== "auto") {
-    throw new Error(`Modo desconocido: ${mode}. Use auto, daily, weekly, fake, dry-biofile, dry-weekly, dry-project o dry-project-demo.`);
+    throw new Error(`Modo desconocido: ${mode}. Use auto, daily, weekly, backfill, dry-backfill, fake, dry-biofile, dry-weekly, dry-project o dry-project-demo.`);
   }
 
   await withBiofile(async (page) => {
