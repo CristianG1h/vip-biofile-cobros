@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import * as XLSX from "xlsx";
+import XLSX from "xlsx";
 import { normalizeDirectoryRow } from "../src/company-directory.js";
 import { importDirectoryToAppsScript } from "../src/apps-script-client.js";
 
