@@ -135,3 +135,22 @@ export function signatureForPlan(plan) {
     .update(JSON.stringify(stable))
     .digest("hex");
 }
+
+export async function enviarCobroConfirmado(
+  consulta,
+  { processId = "", source = "admin_console_real" } = {}
+) {
+  const id = processId || crypto.randomUUID();
+  const result = await sendCobrosInAppsScript(consulta.invoices || [], {
+    desde: consulta.desde,
+    hasta: consulta.hasta,
+    filtroBiofile: "CON DEUDA",
+    source,
+    processId: id,
+  });
+
+  return {
+    processId: id,
+    result,
+  };
+}
