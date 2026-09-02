@@ -75,19 +75,19 @@ test("Biofile selecciona Estado antes de Buscar y no usa fallback en cobro", () 
   assert.equal(source.includes("selectTodas(page)"), false);
 });
 
-test("preview de Apps Script no contiene envío de Gmail", () => {
+test("preview de Apps Script no contiene ningún envío de correo", () => {
   const source = fs.readFileSync(path.join(root, "apps-script", "CobrosAdmin.gs"), "utf8");
   const start = source.indexOf("function planificarCobrosDesdeBiofile_");
   const end = source.indexOf("function cuerpoGrupoCobro_", start);
   assert.ok(start >= 0 && end > start);
   const previewSection = source.slice(start, end);
-  assert.equal(previewSection.includes("GmailApp.sendEmail"), false);
+  assert.equal(previewSection.includes(".sendEmail("), false);
 });
 
 test("el envío real tiene lock y registra historial después del envío", () => {
   const source = fs.readFileSync(path.join(root, "apps-script", "CobrosAdmin.gs"), "utf8");
   assert.ok(source.includes("COBRO_REAL_EN_EJECUCION"));
-  const sendStart = source.indexOf("GmailApp.sendEmail(");
+  const sendStart = source.indexOf("MailApp.sendEmail(");
   const historyAfter = source.indexOf("registrarHistorial_(", sendStart);
   assert.ok(sendStart >= 0);
   assert.ok(historyAfter > sendStart, "El historial debe guardarse después del sendEmail exitoso");
@@ -171,4 +171,32 @@ test("el preview conserva el correo aunque hoy no corresponda envío", () => {
 test("la consola muestra vencimiento futuro sin mora negativa", () => {
   const html = renderAdminConsole();
   assert.ok(html.includes('if(n<0) return "vence en "+Math.abs(n)+" días"'));
+});
+
+
+test("el gestor de cuota consulta la cuota real y conserva reserva", () => {
+  const source = fs.readFileSync(path.join(root, "apps-script", "CobrosAdmin.gs"), "utf8");
+  assert.ok(source.includes("MailApp.getRemainingDailyQuota()"));
+  assert.ok(source.includes('"COBRO_RESERVA_CUOTA"'));
+  assert.ok(source.includes("PENDIENTE_POR_CUOTA"));
+  assert.ok(source.includes("destinatariosConsumidos"));
+});
+
+test("las empresas se priorizan por nivel y luego por mora", () => {
+  const source = fs.readFileSync(path.join(root, "apps-script", "CobrosAdmin.gs"), "utf8");
+  assert.ok(source.includes("return nivelB - nivelA"));
+  assert.ok(source.includes("return moraB - moraA"));
+});
+
+test("un correo agrupado usa el nivel más alto de sus facturas", () => {
+  const source = fs.readFileSync(path.join(root, "apps-script", "CobrosAdmin.gs"), "utf8");
+  assert.ok(source.includes("Math.max(g.nivel, f.nivel)"));
+  assert.ok(source.includes("var nivelMaximo = group.nivel || 1"));
+  assert.ok(source.includes("textoSegunNivel_(nivelMaximo)"));
+});
+
+test("la cuota cuenta destinatarios únicos incluyendo CC", () => {
+  const source = fs.readFileSync(path.join(root, "apps-script", "CobrosAdmin.gs"), "utf8");
+  assert.ok(source.includes("var todos = extraerCorreos_([to, cc].join"));
+  assert.ok(source.includes("cantidad: todos.length"));
 });
