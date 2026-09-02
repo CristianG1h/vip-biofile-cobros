@@ -1,6 +1,6 @@
 // ============================================================================
 // VIP COBROS - MOTOR CENTRAL DE COBRO / CONSOLA ADMIN
-// Version 4.3.0
+// Version 4.3.1
 // ============================================================================
 // Este archivo reutiliza las reglas existentes definidas en CobrosVIP.gs:
 // - calcularNivel()
