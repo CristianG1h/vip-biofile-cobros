@@ -84,6 +84,14 @@ export const config = {
     url: env("APPS_SCRIPT_URL"),
     token: env("APPS_SCRIPT_TOKEN"),
   },
+  server: {
+    port: Math.max(1, integer("PORT", 10000)),
+    apiKey: env("SERVICE_API_KEY"),
+    schedulerEnabled: boolean("SCHEDULER_ENABLED", true),
+    schedulerHour: Math.max(0, Math.min(23, integer("SCHEDULER_HOUR", 18))),
+    schedulerMinute: Math.max(0, Math.min(59, integer("SCHEDULER_MINUTE", 0))),
+    schedulerRetryMinutes: Math.max(1, integer("SCHEDULER_RETRY_MINUTES", 15)),
+  },
   requireBiofileCredentials() {
     return {
       usuario: required(config.biofile.usuario, "BIOFILE_USUARIO"),
