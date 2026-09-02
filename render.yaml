@@ -1,0 +1,26 @@
+services:
+  - type: cron
+    name: vip-biofile-cobros
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    schedule: "0 23 * * *"
+    envVars:
+      - key: HEADLESS
+        value: "true"
+      - key: TIMEZONE
+        value: America/Bogota
+      - key: WEEKLY_DAY
+        value: "0"
+      - key: WEEKLY_RECOVERY_DAYS
+        value: "7"
+      - key: BIOFILE_ESTADO_CUENTAS_URL
+        value: https://vipso.biofile.com.co/Factura/EstadoCuentas.aspx
+      - key: BIOFILE_USUARIO
+        sync: false
+      - key: BIOFILE_CONTRASENA
+        sync: false
+      - key: APPS_SCRIPT_URL
+        sync: false
+      - key: APPS_SCRIPT_TOKEN
+        sync: false

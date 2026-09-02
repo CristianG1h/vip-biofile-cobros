@@ -1,0 +1,80 @@
+{
+  "existing": [
+    {
+      "fecha": "01/09/2026",
+      "nFactura": "FE-TEST-001",
+      "cliente": "EMPRESA PRUEBA SAS",
+      "estadoBiofile": "APROBADA",
+      "valorTotal": 500000,
+      "valorAbonado": 0,
+      "saldoPendiente": 500000
+    }
+  ],
+  "steps": [
+    {
+      "name": "Se crea una factura nueva y la anterior sigue igual",
+      "biofile": [
+        {
+          "fecha": "01/09/2026",
+          "nFactura": "FE-TEST-001",
+          "cliente": "EMPRESA PRUEBA SAS",
+          "estadoBiofile": "APROBADA",
+          "valorTotal": 500000,
+          "valorAbonado": 0,
+          "saldoPendiente": 500000
+        },
+        {
+          "fecha": "01/09/2026",
+          "nFactura": "FE-TEST-002",
+          "cliente": "OTRA EMPRESA PRUEBA SAS",
+          "estadoBiofile": "APROBADA",
+          "valorTotal": 300000,
+          "valorAbonado": 0,
+          "saldoPendiente": 300000
+        }
+      ]
+    },
+    {
+      "name": "Pago parcial sobre una factura existente",
+      "biofile": [
+        {
+          "fecha": "01/09/2026",
+          "nFactura": "FE-TEST-001",
+          "cliente": "EMPRESA PRUEBA SAS",
+          "estadoBiofile": "PAGO PARCIAL",
+          "valorTotal": 500000,
+          "valorAbonado": 200000,
+          "saldoPendiente": 300000
+        }
+      ]
+    },
+    {
+      "name": "Pago total: ya no debe cobrarse",
+      "biofile": [
+        {
+          "fecha": "01/09/2026",
+          "nFactura": "FE-TEST-001",
+          "cliente": "EMPRESA PRUEBA SAS",
+          "estadoBiofile": "PAGO TOTAL",
+          "valorTotal": 500000,
+          "valorAbonado": 500000,
+          "saldoPendiente": 0
+        }
+      ]
+    },
+    {
+      "name": "Anulación: tampoco debe cobrarse",
+      "biofile": [
+        {
+          "fecha": "01/09/2026",
+          "nFactura": "FE-TEST-002",
+          "cliente": "OTRA EMPRESA PRUEBA SAS",
+          "estadoBiofile": "ANULADA",
+          "valorTotal": 0,
+          "valorAbonado": 0,
+          "saldoPendiente": 0
+        }
+      ]
+    }
+  ]
+}

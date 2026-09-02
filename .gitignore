@@ -1,0 +1,19 @@
+# Variables y secretos
+.env
+.env.*
+!.env.example
+
+# Dependencias
+node_modules/
+
+# Sesiones y archivos temporales
+.runtime/
+*.log
+
+# Datos privados
+private/*
+!private/.gitkeep
+
+# Sistema
+.DS_Store
+Thumbs.db

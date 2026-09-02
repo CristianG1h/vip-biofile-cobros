@@ -1,0 +1,29 @@
+{
+  "name": "vip-biofile-cobros",
+  "version": "4.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Sincronizacion automatica Biofile -> Sistema de Cobros VIP.",
+  "scripts": {
+    "start": "node src/index.js auto",
+    "sync:daily": "node src/index.js daily",
+    "sync:weekly": "node src/index.js weekly",
+    "prueba": "node src/index.js fake",
+    "prueba:biofile": "node src/index.js dry-biofile",
+    "prueba:semana": "node src/index.js dry-weekly",
+    "prueba:flujo-semana": "node src/index.js dry-project",
+    "prueba:proyecto": "node src/index.js dry-project-demo",
+    "importar:clientes": "node scripts/importar-clientes.js",
+    "test": "node --test tests/*.test.js",
+    "check": "node scripts/check.mjs"
+  },
+  "engines": {
+    "node": ">=20.10.0"
+  },
+  "dependencies": {
+    "playwright": "1.61.1"
+  },
+  "devDependencies": {
+    "xlsx": "^0.18.5"
+  }
+}
