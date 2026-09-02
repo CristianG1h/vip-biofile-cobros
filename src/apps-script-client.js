@@ -43,6 +43,18 @@ export function syncBackfillToAppsScript(invoices, meta = {}) {
   return callAppsScript("sync_backfill", { invoices, meta });
 }
 
+export function planCobrosInAppsScript(invoices, meta = {}) {
+  return callAppsScript("cobro_plan", { invoices, meta });
+}
+
+export function sendCobrosInAppsScript(invoices, meta = {}) {
+  return callAppsScript("cobro_send", { invoices, meta });
+}
+
+export function getCobroHistoryFromAppsScript(limit = 100) {
+  return callAppsScript("cobro_history", { limit });
+}
+
 export function importDirectoryToAppsScript(rows, meta = {}) {
   return callAppsScript("import_directory", { rows, meta });
 }
