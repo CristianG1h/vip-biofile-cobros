@@ -523,13 +523,32 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
 
-    if (req.method === "GET" && url.pathname === "/health") {
-      json(res, 200, {
-        ok: true,
-        service: "vip-biofile-cobros",
-        version: VERSION,
-        now: new Date().toISOString(),
+    if ((req.method === "GET" || req.method === "HEAD") && url.pathname === "/health") {
+      if (req.method === "HEAD") {
+        res.writeHead(200, {
+          "cache-control": "no-store",
+          "x-service": "vip-biofile-cobros",
+        });
+        res.end();
+      } else {
+        json(res, 200, {
+          ok: true,
+          service: "vip-biofile-cobros",
+          version: VERSION,
+          now: new Date().toISOString(),
+        });
+      }
+      return;
+    }
+
+    // UptimeRobot usa HEAD por defecto en monitores HTTP(S).
+    // Respondemos 200 en la raíz para que el monitor no marque un falso 404.
+    if (req.method === "HEAD" && url.pathname === "/") {
+      res.writeHead(200, {
+        "cache-control": "no-store",
+        "x-service": "vip-biofile-cobros",
       });
+      res.end();
       return;
     }
 
