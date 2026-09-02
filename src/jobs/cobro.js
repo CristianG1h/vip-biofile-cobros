@@ -9,7 +9,7 @@ import {
   sendCobrosInAppsScript,
 } from "../apps-script-client.js";
 
-export const COBRO_ESTADO = COBRO_ESTADO;
+export const COBRO_ESTADO = "CON DEUDA";
 
 export function defaultCobroDesde() {
   return "2026-01-01";
