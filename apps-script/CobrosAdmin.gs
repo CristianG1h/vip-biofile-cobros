@@ -474,6 +474,15 @@ function enviarCobrosDesdeBiofile_(invoices, meta) {
       }
     }
 
+    if (
+      enviadosFacturas > 0 &&
+      (limpiarEspacios_((meta || {}).source) === "admin_console_real" ||
+       limpiarEspacios_((meta || {}).source) === "cli_real")
+    ) {
+      PropertiesService.getScriptProperties()
+        .setProperty("PRIMER_ENVIO_REAL_CONFIRMADO", "true");
+    }
+
     return {
       processId: processId,
       summary: plan.summary,
@@ -557,13 +566,24 @@ function vigilarCobrosCentral_() {
     processId: "scheduler-" + Utilities.getUuid()
   };
 
+  var preview = planificarCobrosDesdeBiofile_(invoices, meta);
+
   if (getModoPrueba_()) {
-    var preview = planificarCobrosDesdeBiofile_(invoices, meta);
     Logger.log(
       "MODO PRUEBA - vigilarCobrosCentral | empresasConEnvio=" +
       preview.summary.empresasConEnvio +
       " | facturasConEnvio=" + preview.summary.facturasConEnvio +
       " | saldoAEnviar=" + preview.summary.saldoAEnviar
+    );
+    return preview;
+  }
+
+  var primerEnvio = PropertiesService.getScriptProperties()
+    .getProperty("PRIMER_ENVIO_REAL_CONFIRMADO");
+
+  if (String(primerEnvio || "").toLowerCase() !== "true") {
+    Logger.log(
+      "ENVÍO AUTOMÁTICO BLOQUEADO: el primer envío real todavía no ha sido confirmado manualmente desde la consola."
     );
     return preview;
   }
