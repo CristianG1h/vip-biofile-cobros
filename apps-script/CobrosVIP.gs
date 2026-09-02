@@ -1,6 +1,6 @@
 // ============================================================================
 // VIP SALUD OCUPACIONAL - SISTEMA DE COBROS + SINCRONIZACION BIOFILE
-// Version 4.0.0
+// Version 4.3.0
 // ============================================================================
 // Este archivo reemplaza la lista fija de correos por DIRECTORIO CLIENTES,
 // recibe la sincronizacion diaria/semanal desde Render y hace UPSERT por factura.
@@ -165,6 +165,26 @@ function doPost(e) {
     if (body.action === "sync_weekly") {
       var weeklyResult = sincronizarFacturas_(body.invoices || [], "SEMANAL", body.meta || {});
       return jsonResponse_({ ok: true, data: weeklyResult });
+    }
+
+    if (body.action === "sync_backfill") {
+      var backfillResult = sincronizarFacturas_(body.invoices || [], "HISTORICO", body.meta || {});
+      return jsonResponse_({ ok: true, data: backfillResult });
+    }
+
+    if (body.action === "cobro_plan") {
+      var planResult = planificarCobrosDesdeBiofile_(body.invoices || [], body.meta || {});
+      return jsonResponse_({ ok: true, data: planResult });
+    }
+
+    if (body.action === "cobro_send") {
+      var sendResult = enviarCobrosDesdeBiofile_(body.invoices || [], body.meta || {});
+      return jsonResponse_({ ok: true, data: sendResult });
+    }
+
+    if (body.action === "cobro_history") {
+      var historyResult = obtenerHistorialAdmin_(body.limit || 100);
+      return jsonResponse_({ ok: true, data: historyResult });
     }
 
     return jsonResponse_({ ok: false, error: "Acción no permitida: " + String(body.action || "") });
@@ -690,73 +710,9 @@ function completarCorreosFacturacion() {
 // ============================================================================
 
 function vigilarCobros() {
-  asegurarEstructura_();
-  var ss = SpreadsheetApp.openById(SHEET_ID_CARTERA);
-  var hoja = ss.getSheetByName(HOJA_FACTURAS);
-  var datos = hoja.getDataRange().getValues();
-  var hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  var prueba = getModoPrueba_();
-
-  var candidatos = 0;
-  var enviados = 0;
-
-  for (var i = 1; i < datos.length; i++) {
-    var fila = datos[i];
-    var nFactura = limpiarEspacios_(fila[1]);
-    var cliente = limpiarEspacios_(fila[3]);
-    var saldoPendiente = numero_(fila[6]);
-    var categoria = limpiarEspacios_(fila[7]);
-    var fechaVencimiento = parseFecha_(fila[9]);
-    var correoFacturacion = normalizarDestinatarios_(fila[10]);
-    var pausar = normalizarTexto_(fila[11]);
-    var estado = normalizarTexto_(fila[12]);
-
-    if (!nFactura) continue;
-    if (saldoPendiente <= 0) continue;
-    if (pausar === "SI") continue;
-    if (!correoFacturacion) continue;
-    if (estado === "PAGADO" || estado === "ANULADA" || estado === "INCOBRABLE") continue;
-    if (!fechaVencimiento) continue;
-
-    fechaVencimiento.setHours(0, 0, 0, 0);
-    var diasVencido = Math.round((hoy.getTime() - fechaVencimiento.getTime()) / 86400000);
-    var nivel = calcularNivel(categoria, diasVencido);
-    if (nivel === null) continue;
-    if (yaSeEnvioHoy_(nFactura, nivel)) continue;
-
-    candidatos++;
-
-    if (prueba) {
-      Logger.log(
-        "MODO PRUEBA - NO SE ENVÍA | Factura: " + nFactura +
-        " | Para: " + correoFacturacion +
-        " | Nivel: " + nivel +
-        " | Saldo: " + saldoPendiente
-      );
-      continue;
-    }
-
-    enviarRecordatorio_(
-      cliente,
-      nFactura,
-      saldoPendiente,
-      fechaVencimiento,
-      diasVencido,
-      correoFacturacion,
-      nivel,
-      categoria
-    );
-
-    registrarHistorial_(nFactura, cliente, categoria, nivel, correoFacturacion);
-    enviados++;
-
-    if (diasVencido >= 100) {
-      avisarCarteraCritica_(cliente, nFactura, saldoPendiente, diasVencido, categoria);
-    }
-  }
-
-  Logger.log("vigilarCobros terminado. modoPrueba=" + prueba + " candidatos=" + candidatos + " enviados=" + enviados);
+  // Mantiene el nombre del trigger existente, pero usa el mismo motor central
+  // que la consola administrativa. Las reglas de nivel siguen siendo calcularNivel().
+  return vigilarCobrosCentral_();
 }
 
 function calcularNivel(categoria, diasVencido) {
