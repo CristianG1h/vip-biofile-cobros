@@ -20,16 +20,40 @@ async function fillIfDifferent(page, selector, value) {
   return true;
 }
 
-async function selectTodas(page) {
+function normalizeEstado(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+}
+
+async function selectEstadoExacto(page, estadoVisible) {
+  const esperado = normalizeEstado(estadoVisible);
+  if (!esperado) throw new Error("Estado de Biofile vacío.");
+
   const select = page.locator(SELECTORS.estado).first();
   await select.waitFor({ state: "visible" });
+
   const current = await select.locator("option:checked").textContent().catch(() => "");
-  if (String(current || "").trim().toUpperCase() === "TODAS") return false;
+  if (normalizeEstado(current) === esperado) return false;
 
   const options = await select.locator("option").allTextContents();
-  const index = options.findIndex((x) => String(x).trim().toUpperCase() === "TODAS");
-  if (index < 0) throw new Error('Biofile no mostró la opción "TODAS" en Estado.');
+  const index = options.findIndex((x) => normalizeEstado(x) === esperado);
+  if (index < 0) {
+    throw new Error(`Biofile no mostró la opción exacta "${estadoVisible}" en Estado.`);
+  }
+
   await select.selectOption({ index });
+
+  const selected = await select.locator("option:checked").textContent().catch(() => "");
+  if (normalizeEstado(selected) !== esperado) {
+    throw new Error(
+      `Biofile no confirmó el Estado "${estadoVisible}". Selección actual: "${String(selected || "").trim()}".`
+    );
+  }
+
   return true;
 }
 
@@ -199,6 +223,7 @@ export async function queryEstadoCuentas(page, options) {
     hasta,
     pageSize = null,
     daily = false,
+    estado = "TODAS",
   } = options;
 
   await page.locator(SELECTORS.estado).first().waitFor({ state: "visible" });
@@ -207,12 +232,12 @@ export async function queryEstadoCuentas(page, options) {
   // Solo se corrige si por algún motivo no coincide.
   const changedDesde = await fillIfDifferent(page, SELECTORS.desde, desde);
   const changedHasta = await fillIfDifferent(page, SELECTORS.hasta, hasta);
-  const changedEstado = await selectTodas(page);
+  const changedEstado = await selectEstadoExacto(page, estado);
 
   logger.info("Parámetros Biofile listos.", {
     desde,
     hasta,
-    estado: "TODAS",
+    estado,
     resolucion: "sin modificar",
     daily,
     changedDesde,
@@ -220,7 +245,8 @@ export async function queryEstadoCuentas(page, options) {
     changedEstado,
   });
 
-  // El usuario indicó que después de cambiar fecha o Estado hay que pulsar Buscar.
+  // Buscar SIEMPRE ocurre después de confirmar fecha y Estado.
+  // Si selectEstadoExacto falla, el proceso se detiene y nunca cae a otro Estado como fallback.
   await clickSearch(page);
 
   // Diario: no tocamos 50. Semanal/histórico: 1000.
