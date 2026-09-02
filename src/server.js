@@ -5,6 +5,7 @@ import { logger } from "./logger.js";
 import { createBiofileSession } from "./browser.js";
 import { runDaily } from "./jobs/daily.js";
 import { runWeekly } from "./jobs/weekly.js";
+import { runBackfill } from "./jobs/backfill.js";
 import { pingAppsScript } from "./apps-script-client.js";
 import { todayISO, weekdayInZone } from "./utils/date.js";
 
@@ -62,7 +63,7 @@ function authorize(req, res) {
 function publicState() {
   return {
     service: "vip-biofile-cobros",
-    version: "4.1.0-web",
+    version: "4.2.0-web",
     timezone: config.timezone,
     scheduler: {
       enabled: config.server.schedulerEnabled,
@@ -80,7 +81,7 @@ function publicState() {
   };
 }
 
-async function runBiofileJob(kind, source) {
+async function runBiofileJob(kind, source, options = {}) {
   if (state.running) {
     throw new Error(`Ya hay una ejecución activa: ${state.running.kind}.`);
   }
@@ -92,13 +93,18 @@ async function runBiofileJob(kind, source) {
   const session = await createBiofileSession();
   try {
     await session.ensureLogin();
-    const result = kind === "weekly"
-      ? await runWeekly(session.page)
-      : await runDaily(session.page);
+    let result;
+    if (kind === "weekly") {
+      result = await runWeekly(session.page);
+    } else if (kind === "backfill") {
+      result = await runBackfill(session.page, options);
+    } else {
+      result = await runDaily(session.page);
+    }
 
     const dateISO = todayISO(config.timezone);
     if (kind === "weekly") state.lastWeeklySuccessDate = dateISO;
-    else state.lastDailySuccessDate = dateISO;
+    else if (kind === "daily") state.lastDailySuccessDate = dateISO;
 
     state.lastResult = {
       kind,
@@ -133,9 +139,9 @@ async function runBiofileJob(kind, source) {
   }
 }
 
-function startBackgroundJob(kind, source) {
+function startBackgroundJob(kind, source, options = {}) {
   if (state.running) return false;
-  void runBiofileJob(kind, source).catch(() => {});
+  void runBiofileJob(kind, source, options).catch(() => {});
   return true;
 }
 
@@ -255,6 +261,24 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     json(res, 202, { ok: true, accepted: true, job: "weekly" });
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/sync/backfill") {
+    if (!authorize(req, res)) return;
+    const desdeISO = url.searchParams.get("desde") || "";
+    const hastaISO = url.searchParams.get("hasta") || "";
+    if (!startBackgroundJob("backfill", "api", { desdeISO, hastaISO, dryRun: false })) {
+      json(res, 409, { ok: false, error: "Ya hay una ejecución activa.", running: state.running });
+      return;
+    }
+    json(res, 202, {
+      ok: true,
+      accepted: true,
+      job: "backfill",
+      desde: desdeISO || "01/01 del año actual",
+      hasta: hastaISO || "hoy",
+    });
     return;
   }
 
