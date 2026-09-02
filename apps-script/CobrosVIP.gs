@@ -717,26 +717,49 @@ function vigilarCobros() {
 
 function calcularNivel(categoria, diasVencido) {
   categoria = normalizarTexto_(categoria);
+  diasVencido = Number(diasVencido);
 
+  if (!isFinite(diasVencido)) return null;
+
+  // Los niveles permanecen activos durante su rango.
+  // Así no dependemos de ejecutar exactamente el día del umbral.
   if (categoria === "A") {
     if (diasVencido < 10) return null;
-    var cicloA = diasVencido - 10;
-    if (cicloA % 9 !== 0) return null;
-    return Math.min(1 + Math.floor(cicloA / 9), 8);
+    if (diasVencido <= 18) return 1;
+    if (diasVencido <= 27) return 2;
+    if (diasVencido <= 36) return 3;
+    if (diasVencido <= 45) return 4;
+    if (diasVencido <= 54) return 5;
+    if (diasVencido <= 63) return 6;
+    if (diasVencido <= 72) return 7;
+    return 8;
   }
 
   if (categoria === "B") {
-    if (diasVencido === -5) return 1;
-    if (diasVencido === 0) return 2;
-    if (diasVencido < 0) return null;
-    if (diasVencido % 9 !== 0) return null;
-    return Math.min(2 + Math.floor(diasVencido / 9), 8);
+    // Aviso preventivo: desde 5 días antes del vencimiento hasta el día anterior.
+    if (diasVencido < -5) return null;
+    if (diasVencido < 0) return 1;
+
+    if (diasVencido <= 8) return 2;
+    if (diasVencido <= 17) return 3;
+
+    // Regla solicitada: 18 a 27 días permanece en nivel 4;
+    // al llegar a 28 días pasa a nivel 5.
+    if (diasVencido <= 27) return 4;
+    if (diasVencido <= 36) return 5;
+    if (diasVencido <= 45) return 6;
+    if (diasVencido <= 54) return 7;
+    return 8;
   }
 
   if (categoria === "C") {
     if (diasVencido < 0) return null;
-    if (diasVencido % 9 !== 0) return null;
-    return Math.min(3 + Math.floor(diasVencido / 9), 8);
+    if (diasVencido <= 8) return 3;
+    if (diasVencido <= 17) return 4;
+    if (diasVencido <= 26) return 5;
+    if (diasVencido <= 35) return 6;
+    if (diasVencido <= 44) return 7;
+    return 8;
   }
 
   return null;
@@ -767,7 +790,11 @@ function generarMensaje_(cliente, nFactura, saldo, fechaVenc, diasVencido, nivel
     "Factura número: " + nFactura + "\n" +
     "Valor pendiente: $" + saldoTexto + "\n" +
     "Fecha de vencimiento: " + fechaTexto + "\n" +
-    "Días de mora: " + diasVencido + "\n\n";
+    (diasVencido < 0
+      ? "Faltan " + Math.abs(diasVencido) + " días para el vencimiento\n\n"
+      : diasVencido === 0
+        ? "La factura vence hoy\n\n"
+        : "Días de mora: " + diasVencido + "\n\n");
 
   var pie =
     "\n\nDatos para el pago:\n" + DATOS_BANCARIOS +
