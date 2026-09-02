@@ -1,6 +1,6 @@
 // ============================================================================
 // VIP SALUD OCUPACIONAL - SISTEMA DE COBROS + SINCRONIZACION BIOFILE
-// Version 4.3.0
+// Version 4.3.1
 // ============================================================================
 // Este archivo reemplaza la lista fija de correos por DIRECTORIO CLIENTES,
 // recibe la sincronizacion diaria/semanal desde Render y hace UPSERT por factura.
