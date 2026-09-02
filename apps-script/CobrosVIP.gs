@@ -1,6 +1,6 @@
 // ============================================================================
 // VIP SALUD OCUPACIONAL - SISTEMA DE COBROS + SINCRONIZACION BIOFILE
-// Version 4.3.1
+// Version 4.4.0
 // ============================================================================
 // Este archivo reemplaza la lista fija de correos por DIRECTORIO CLIENTES,
 // recibe la sincronizacion diaria/semanal desde Render y hace UPSERT por factura.
@@ -774,7 +774,7 @@ function enviarRecordatorio_(cliente, nFactura, saldo, fechaVenc, diasVencido, c
     opciones.cc = CORREO_CONTABILIDAD;
   }
 
-  GmailApp.sendEmail(correo, asunto, cuerpo, opciones);
+  MailApp.sendEmail(correo, asunto, cuerpo, opciones);
 }
 
 function generarMensaje_(cliente, nFactura, saldo, fechaVenc, diasVencido, nivel) {
@@ -828,7 +828,7 @@ function avisarCarteraCritica_(cliente, nFactura, saldo, diasVencido, categoria)
     "Días en mora: " + diasVencido + "\n\n" +
     "Esta factura superó los 100 días de mora.";
 
-  GmailApp.sendEmail(CORREO_VIP, asunto, cuerpo, { name: "VIP Salud Ocupacional - Cartera" });
+  MailApp.sendEmail(CORREO_VIP, asunto, cuerpo, { name: "VIP Salud Ocupacional - Cartera" });
 }
 
 function registrarHistorial_(nFactura, cliente, categoria, nivel, correo) {
