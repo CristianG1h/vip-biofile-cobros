@@ -57,3 +57,53 @@ test("los secretos se enmascaran en logs", () => {
   assert.equal(safe.nested.authorization, "[REDACTED]");
   assert.equal(safe.nested.ok, 123);
 });
+
+
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+test("Biofile selecciona Estado antes de Buscar y no usa fallback en cobro", () => {
+  const source = fs.readFileSync(path.join(root, "src", "biofile", "estado-cuentas.js"), "utf8");
+  const selected = source.indexOf("await selectEstadoExacto(page, estado)");
+  const searched = source.indexOf("await clickSearch(page)", selected);
+  assert.ok(selected >= 0, "Debe seleccionar Estado exacto");
+  assert.ok(searched > selected, "Buscar debe ocurrir después de seleccionar Estado");
+  assert.equal(source.includes("selectTodas(page)"), false);
+});
+
+test("preview de Apps Script no contiene envío de Gmail", () => {
+  const source = fs.readFileSync(path.join(root, "apps-script", "CobrosAdmin.gs"), "utf8");
+  const start = source.indexOf("function planificarCobrosDesdeBiofile_");
+  const end = source.indexOf("function cuerpoGrupoCobro_", start);
+  assert.ok(start >= 0 && end > start);
+  const previewSection = source.slice(start, end);
+  assert.equal(previewSection.includes("GmailApp.sendEmail"), false);
+});
+
+test("el envío real tiene lock y registra historial después del envío", () => {
+  const source = fs.readFileSync(path.join(root, "apps-script", "CobrosAdmin.gs"), "utf8");
+  assert.ok(source.includes("COBRO_REAL_EN_EJECUCION"));
+  const sendStart = source.indexOf("GmailApp.sendEmail(");
+  const historyAfter = source.indexOf("registrarHistorial_(", sendStart);
+  assert.ok(sendStart >= 0);
+  assert.ok(historyAfter > sendStart, "El historial debe guardarse después del sendEmail exitoso");
+});
+
+test("la consola no expone una terminal de sistema", () => {
+  const source = fs.readFileSync(path.join(root, "src", "server.js"), "utf8");
+  assert.ok(source.includes("Comando no permitido. Esta consola no ejecuta comandos del sistema."));
+  assert.equal(source.includes("child_process"), false);
+  assert.equal(source.includes("exec("), false);
+  assert.equal(source.includes("spawn("), false);
+});
+
+test("el envío real requiere segunda confirmación", () => {
+  const source = fs.readFileSync(path.join(root, "src", "server.js"), "utf8");
+  assert.ok(source.includes("prepareReal(desde)"));
+  assert.ok(source.includes("/api/cobro/confirm-real"));
+  assert.ok(source.includes("confirmationId"));
+  assert.ok(source.includes("La cartera cambió desde la previsualización"));
+});
