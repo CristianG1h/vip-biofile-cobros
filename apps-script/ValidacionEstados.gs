@@ -1,15 +1,6 @@
 // ============================================================================
 // VIP COBROS - VALIDACION SEGURA DE ESTADOS EN HOJA FACTURAS
-// Version 1.1
-// ============================================================================
-// Corrige la validacion de la columna M (Estado) para que coincida con los
-// estados que CobrosVIP.gs genera al sincronizar Biofile.
-//
-// IMPORTANTE:
-// - No modifica facturas, saldos, correos ni historial.
-// - No envia correos.
-// - No recorre toda la capacidad de la hoja: trabaja solo sobre las filas
-//   usadas mas un margen de seguridad para evitar timeouts de Apps Script.
+// Version 1.2 - SIN ALERT BLOQUEANTE
 // ============================================================================
 
 var ESTADOS_FACTURA_VALIDOS = [
@@ -50,9 +41,6 @@ function asegurarValidacionEstadoFacturas_() {
   var hoja = asegurarHoja_(ss, HOJA_FACTURAS, HEADERS_FACTURAS);
 
   var ultimaFilaUsada = Math.max(2, hoja.getLastRow());
-
-  // Cubrimos las filas actuales + 500 filas futuras, con un minimo de 1000.
-  // Esto evita recorrer decenas de miles de filas vacias y elimina el timeout.
   var ultimaFilaObjetivo = Math.max(1000, ultimaFilaUsada + 500);
   var cantidad = ultimaFilaObjetivo - 1;
 
@@ -60,6 +48,7 @@ function asegurarValidacionEstadoFacturas_() {
   SpreadsheetApp.flush();
 
   return {
+    ok: true,
     reparada: true,
     desdeFila: 2,
     hastaFila: ultimaFilaObjetivo,
@@ -71,17 +60,10 @@ function asegurarValidacionEstadoFacturas_() {
 function repararValidacionEstadoFacturas() {
   var result = asegurarValidacionEstadoFacturas_();
 
-  SpreadsheetApp.getUi().alert(
-    "VALIDACION REPARADA.\n\n" +
-    "La columna Estado ahora permite:\n" +
-    "- Pendiente\n" +
-    "- Pago parcial\n" +
-    "- Pagado\n" +
-    "- Anulada\n" +
-    "- Incobrable\n\n" +
-    "Filas protegidas: 2 a " + result.hastaFila + ".\n\n" +
-    "No se modificaron facturas ni se enviaron correos."
-  );
+  // No usar SpreadsheetApp.getUi().alert() aquí: ejecutada desde el editor,
+  // esa llamada es bloqueante y puede agotar los 6 minutos de Apps Script.
+  Logger.log("VALIDACION REPARADA: " + JSON.stringify(result));
+  console.log("VALIDACION REPARADA: " + JSON.stringify(result));
 
   return result;
 }
