@@ -1,6 +1,6 @@
 // ============================================================================
 // VIP COBROS - TRIGGER AUTOMATICO SEGURO
-// Version 1.0
+// Version 1.1
 // ============================================================================
 // Objetivo:
 // - Reemplazar el uso automatico del antiguo vigilarCobros basado solo en Sheet.
@@ -191,6 +191,7 @@ function crearTriggerVigilarCobrosSeguro() {
     .timeBased()
     .everyDays(1)
     .atHour(8)
+    .inTimezone("America/Bogota")
     .create();
 
   Logger.log(
